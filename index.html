@@ -1,0 +1,643 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jira Service Management Interface</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --card: #fff;
+      --text: #172b4d;
+      --muted: #5e6c84;
+      --border: #dfe1e6;
+      --primary: #0052cc;
+      --primary-hover: #0747a6;
+      --danger: #de350b;
+      --ok: #00875a;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    header {
+      padding: 1rem 1.25rem;
+      background: var(--primary);
+      color: #fff;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 1.25rem auto;
+      padding: 0 1rem;
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 1rem;
+    }
+
+    .sidebar,
+    .content-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .sidebar button {
+      width: 100%;
+      text-align: left;
+      padding: 0.75rem 1rem;
+      border: 0;
+      border-bottom: 1px solid var(--border);
+      background: #fff;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+
+    .sidebar button.active {
+      background: #deebff;
+      font-weight: 600;
+      color: #0747a6;
+    }
+
+    .content-card {
+      padding: 1rem;
+    }
+
+    h2 {
+      margin: 0 0 0.75rem;
+      font-size: 1.2rem;
+    }
+
+    p.description {
+      margin-top: 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .form-field.full {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      font-weight: 600;
+      font-size: 0.87rem;
+    }
+
+    input, textarea, select {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.55rem 0.65rem;
+      font-size: 0.94rem;
+      font-family: inherit;
+    }
+
+    textarea { min-height: 90px; resize: vertical; }
+
+    .actions {
+      margin-top: 1rem;
+      display: flex;
+      gap: 0.55rem;
+      flex-wrap: wrap;
+    }
+
+    button.primary,
+    button.secondary,
+    button.danger {
+      border: 0;
+      border-radius: 6px;
+      padding: 0.6rem 0.85rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    button.primary {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    button.primary:hover { background: var(--primary-hover); }
+
+    button.secondary {
+      background: #ebecf0;
+      color: #172b4d;
+    }
+
+    button.danger {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    .status {
+      margin-top: 0.85rem;
+      padding: 0.65rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      display: none;
+    }
+
+    .status.show { display: block; }
+    .status.ok { background: #e3fcef; color: #006644; border: 1px solid #abf5d1; }
+    .status.error { background: #ffebe6; color: #bf2600; border: 1px solid #ffbdad; }
+
+    .ticket-list {
+      margin-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .ticket-row {
+      display: grid;
+      grid-template-columns: 120px 1fr auto;
+      gap: 0.5rem;
+      align-items: center;
+      padding: 0.7rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .ticket-key {
+      font-weight: 700;
+      color: #0747a6;
+    }
+
+    .ticket-meta {
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    .hidden { display: none; }
+
+    @media (max-width: 900px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .ticket-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Jira Service Management Interface</h1>
+  </header>
+
+  <main class="container">
+    <nav class="sidebar" aria-label="Navigation">
+      <button id="nav-tickets" class="active" type="button">Service Management</button>
+      <button id="nav-config" type="button">Configuration</button>
+    </nav>
+
+    <section class="content-card">
+      <div id="view-tickets">
+        <h2>Manage Tickets</h2>
+        <p class="description">Create, view, and update tickets in your configured Jira project.</p>
+
+        <div class="actions" style="margin-top: 0; margin-bottom: 1rem;">
+          <button id="load-tickets" class="secondary" type="button">Refresh Tickets</button>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-field full">
+            <label for="ticket-summary">Summary</label>
+            <input id="ticket-summary" type="text" placeholder="Issue summary" />
+          </div>
+          <div class="form-field full">
+            <label for="ticket-description">Description</label>
+            <textarea id="ticket-description" placeholder="Issue details"></textarea>
+          </div>
+          <div class="form-field">
+            <label for="ticket-type">Issue Type</label>
+            <input id="ticket-type" type="text" value="Task" />
+          </div>
+          <div class="form-field">
+            <label for="ticket-priority">Priority (optional)</label>
+            <input id="ticket-priority" type="text" placeholder="e.g. High" />
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="create-ticket" class="primary" type="button">Create Ticket</button>
+          <button id="clear-create" class="secondary" type="button">Clear</button>
+        </div>
+
+        <div id="tickets-status" class="status"></div>
+
+        <div class="ticket-list" id="ticket-list"></div>
+
+        <div id="update-panel" class="hidden" style="margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+          <h2 style="font-size: 1rem; margin-bottom: 0.5rem;">Update Selected Ticket</h2>
+          <p class="description" id="selected-ticket-label">No ticket selected.</p>
+
+          <div class="form-grid">
+            <div class="form-field full">
+              <label for="update-summary">Summary</label>
+              <input id="update-summary" type="text" placeholder="Updated summary" />
+            </div>
+            <div class="form-field full">
+              <label for="update-description">Description</label>
+              <textarea id="update-description" placeholder="Updated description"></textarea>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button id="save-update" class="primary" type="button">Save Update</button>
+            <button id="cancel-update" class="secondary" type="button">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="view-config" class="hidden">
+        <h2>Configuration</h2>
+        <p class="description">Set Jira connection details. Values are saved to browser local storage.</p>
+
+        <div class="form-grid">
+          <div class="form-field full">
+            <label for="cfg-base-url">Jira Base URL</label>
+            <input id="cfg-base-url" type="url" placeholder="https://your-domain.atlassian.net" />
+          </div>
+          <div class="form-field">
+            <label for="cfg-email">Jira User Email</label>
+            <input id="cfg-email" type="email" placeholder="agent@company.com" />
+          </div>
+          <div class="form-field">
+            <label for="cfg-api-token">API Token / Key</label>
+            <input id="cfg-api-token" type="password" placeholder="Atlassian API token" />
+          </div>
+          <div class="form-field">
+            <label for="cfg-project-key">Project Key</label>
+            <input id="cfg-project-key" type="text" placeholder="ITSM" />
+          </div>
+          <div class="form-field">
+            <label for="cfg-default-assignee">Default Assignee Account ID (optional)</label>
+            <input id="cfg-default-assignee" type="text" placeholder="Account ID for assignee" />
+          </div>
+          <div class="form-field full">
+            <label for="cfg-search-jql">Ticket Search JQL</label>
+            <input id="cfg-search-jql" type="text" placeholder="project = ITSM ORDER BY created DESC" />
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="save-config" class="primary" type="button">Save Configuration</button>
+          <button id="test-config" class="secondary" type="button">Test Connection</button>
+          <button id="reset-config" class="danger" type="button">Reset</button>
+        </div>
+
+        <div id="config-status" class="status"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const STORAGE_KEY = "jiraServiceConfig.v1";
+
+    const defaults = {
+      baseUrl: "",
+      email: "",
+      apiToken: "",
+      projectKey: "",
+      defaultAssignee: "",
+      searchJql: ""
+    };
+
+    let state = {
+      config: { ...defaults },
+      selectedTicketKey: null,
+      selectedTicket: null
+    };
+
+    function $(id) { return document.getElementById(id); }
+
+    function showStatus(el, message, ok = true) {
+      el.textContent = message;
+      el.className = `status show ${ok ? "ok" : "error"}`;
+    }
+
+    function hideStatus(el) {
+      el.className = "status";
+      el.textContent = "";
+    }
+
+    function switchView(toConfig) {
+      $("view-config").classList.toggle("hidden", !toConfig);
+      $("view-tickets").classList.toggle("hidden", toConfig);
+      $("nav-config").classList.toggle("active", toConfig);
+      $("nav-tickets").classList.toggle("active", !toConfig);
+    }
+
+    function loadConfig() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        state.config = raw ? { ...defaults, ...JSON.parse(raw) } : { ...defaults };
+      } catch {
+        state.config = { ...defaults };
+      }
+
+      $("cfg-base-url").value = state.config.baseUrl;
+      $("cfg-email").value = state.config.email;
+      $("cfg-api-token").value = state.config.apiToken;
+      $("cfg-project-key").value = state.config.projectKey;
+      $("cfg-default-assignee").value = state.config.defaultAssignee;
+      $("cfg-search-jql").value = state.config.searchJql;
+    }
+
+    function saveConfig() {
+      state.config = {
+        baseUrl: $("cfg-base-url").value.trim().replace(/\/$/, ""),
+        email: $("cfg-email").value.trim(),
+        apiToken: $("cfg-api-token").value.trim(),
+        projectKey: $("cfg-project-key").value.trim(),
+        defaultAssignee: $("cfg-default-assignee").value.trim(),
+        searchJql: $("cfg-search-jql").value.trim()
+      };
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state.config));
+      showStatus($("config-status"), "Configuration saved.", true);
+    }
+
+    function resetConfig() {
+      state.config = { ...defaults };
+      localStorage.removeItem(STORAGE_KEY);
+      loadConfig();
+      showStatus($("config-status"), "Configuration reset.", true);
+    }
+
+    function validateConfig() {
+      const { baseUrl, email, apiToken, projectKey } = state.config;
+      if (!baseUrl || !email || !apiToken || !projectKey) {
+        throw new Error("Missing config: base URL, email, API token and project key are required.");
+      }
+    }
+
+    function jiraHeaders() {
+      const auth = btoa(`${state.config.email}:${state.config.apiToken}`);
+      return {
+        "Authorization": `Basic ${auth}`,
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      };
+    }
+
+    async function jiraRequest(path, options = {}) {
+      validateConfig();
+      const url = `${state.config.baseUrl}${path}`;
+      const res = await fetch(url, {
+        ...options,
+        headers: {
+          ...jiraHeaders(),
+          ...(options.headers || {})
+        }
+      });
+
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`Jira request failed (${res.status}): ${body || res.statusText}`);
+      }
+
+      return res.status === 204 ? null : await res.json();
+    }
+
+    async function testConnection() {
+      hideStatus($("config-status"));
+      try {
+        saveConfig();
+        await jiraRequest(`/rest/api/3/project/${encodeURIComponent(state.config.projectKey)}`);
+        showStatus($("config-status"), "Connection test succeeded.", true);
+      } catch (err) {
+        showStatus($("config-status"), err.message, false);
+      }
+    }
+
+    function renderTickets(issues = []) {
+      const list = $("ticket-list");
+      list.innerHTML = "";
+
+      if (!issues.length) {
+        const empty = document.createElement("p");
+        empty.className = "description";
+        empty.textContent = "No tickets found.";
+        list.appendChild(empty);
+        return;
+      }
+
+      for (const issue of issues) {
+        const row = document.createElement("div");
+        row.className = "ticket-row";
+        const summary = issue.fields?.summary || "(no summary)";
+        const statusName = issue.fields?.status?.name || "Unknown";
+
+        row.innerHTML = `
+          <div class="ticket-key">${issue.key}</div>
+          <div>
+            <div>${summary}</div>
+            <div class="ticket-meta">Status: ${statusName}</div>
+          </div>
+          <div><button class="secondary" data-key="${issue.key}">Edit</button></div>
+        `;
+
+        row.querySelector("button").addEventListener("click", () => selectTicket(issue));
+        list.appendChild(row);
+      }
+    }
+
+    async function loadTickets() {
+      hideStatus($("tickets-status"));
+      try {
+        saveConfig();
+
+        const jql = state.config.searchJql || `project = ${state.config.projectKey} ORDER BY created DESC`;
+        const payload = {
+          jql,
+          maxResults: 25,
+          fields: ["summary", "status", "description"]
+        };
+
+        const data = await jiraRequest("/rest/api/3/search", {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+
+        renderTickets(data.issues || []);
+      } catch (err) {
+        showStatus($("tickets-status"), err.message, false);
+      }
+    }
+
+    async function createTicket() {
+      hideStatus($("tickets-status"));
+      const summary = $("ticket-summary").value.trim();
+      const description = $("ticket-description").value.trim();
+      const issueType = $("ticket-type").value.trim() || "Task";
+      const priority = $("ticket-priority").value.trim();
+
+      if (!summary) {
+        showStatus($("tickets-status"), "Summary is required.", false);
+        return;
+      }
+
+      try {
+        saveConfig();
+
+        const fields = {
+          project: { key: state.config.projectKey },
+          summary,
+          issuetype: { name: issueType },
+          description: {
+            type: "doc",
+            version: 1,
+            content: [{
+              type: "paragraph",
+              content: [{ type: "text", text: description || "No description provided." }]
+            }]
+          }
+        };
+
+        if (priority) fields.priority = { name: priority };
+        if (state.config.defaultAssignee) fields.assignee = { id: state.config.defaultAssignee };
+
+        const data = await jiraRequest("/rest/api/3/issue", {
+          method: "POST",
+          body: JSON.stringify({ fields })
+        });
+
+        showStatus($("tickets-status"), `Ticket created: ${data.key}`, true);
+        $("ticket-summary").value = "";
+        $("ticket-description").value = "";
+        $("ticket-priority").value = "";
+        await loadTickets();
+      } catch (err) {
+        showStatus($("tickets-status"), err.message, false);
+      }
+    }
+
+    function selectTicket(issue) {
+      state.selectedTicketKey = issue.key;
+      state.selectedTicket = issue;
+      const textBlocks = issue.fields?.description?.content || [];
+      const plainDescription = textBlocks
+        .flatMap(block => block.content || [])
+        .map(node => node.text || "")
+        .join(" ");
+
+      $("update-panel").classList.remove("hidden");
+      $("selected-ticket-label").textContent = `Selected: ${issue.key}`;
+      $("update-summary").value = issue.fields?.summary || "";
+      $("update-description").value = plainDescription;
+    }
+
+    async function saveUpdate() {
+      hideStatus($("tickets-status"));
+      if (!state.selectedTicketKey) {
+        showStatus($("tickets-status"), "Select a ticket first.", false);
+        return;
+      }
+
+      const summary = $("update-summary").value.trim();
+      const description = $("update-description").value.trim();
+
+      if (!summary) {
+        showStatus($("tickets-status"), "Updated summary is required.", false);
+        return;
+      }
+
+      try {
+        saveConfig();
+
+        const body = {
+          fields: {
+            summary,
+            description: {
+              type: "doc",
+              version: 1,
+              content: [{
+                type: "paragraph",
+                content: [{ type: "text", text: description || "No description provided." }]
+              }]
+            }
+          }
+        };
+
+        await jiraRequest(`/rest/api/3/issue/${encodeURIComponent(state.selectedTicketKey)}`, {
+          method: "PUT",
+          body: JSON.stringify(body)
+        });
+
+        showStatus($("tickets-status"), `Ticket updated: ${state.selectedTicketKey}`, true);
+        $("update-panel").classList.add("hidden");
+        state.selectedTicketKey = null;
+        state.selectedTicket = null;
+        await loadTickets();
+      } catch (err) {
+        showStatus($("tickets-status"), err.message, false);
+      }
+    }
+
+    function clearCreateForm() {
+      $("ticket-summary").value = "";
+      $("ticket-description").value = "";
+      $("ticket-type").value = "Task";
+      $("ticket-priority").value = "";
+    }
+
+    function cancelUpdate() {
+      $("update-panel").classList.add("hidden");
+      state.selectedTicketKey = null;
+      state.selectedTicket = null;
+    }
+
+    function bindEvents() {
+      $("nav-tickets").addEventListener("click", () => switchView(false));
+      $("nav-config").addEventListener("click", () => switchView(true));
+      $("save-config").addEventListener("click", () => {
+        hideStatus($("config-status"));
+        saveConfig();
+      });
+      $("test-config").addEventListener("click", testConnection);
+      $("reset-config").addEventListener("click", resetConfig);
+
+      $("load-tickets").addEventListener("click", loadTickets);
+      $("create-ticket").addEventListener("click", createTicket);
+      $("clear-create").addEventListener("click", clearCreateForm);
+      $("save-update").addEventListener("click", saveUpdate);
+      $("cancel-update").addEventListener("click", cancelUpdate);
+    }
+
+    function bootstrap() {
+      loadConfig();
+      bindEvents();
+    }
+
+    bootstrap();
+  </script>
+</body>
+</html>
